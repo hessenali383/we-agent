@@ -87,6 +87,33 @@ def insert_ticket(phone: str, issue_type: str, description: str) -> str:
     return str(result.inserted_id)
 
 
+def get_tickets_by_phone(phone: str, limit: int = 5) -> list:
+    """Return this phone number's most recent tickets (newest first).
+
+    Used to recognize a returning customer following up on an existing
+    complaint, so the agent can surface prior ticket IDs/status instead of
+    blindly filing a duplicate.
+    """
+    cursor = (
+        get_tickets_collection()
+        .find({"phone": phone})
+        .sort("created_at", pymongo.DESCENDING)
+        .limit(limit)
+    )
+    tickets = []
+    for doc in cursor:
+        tickets.append(
+            {
+                "ticket_id": str(doc["_id"]),
+                "issue_type": doc.get("issue_type", ""),
+                "description": doc.get("description", ""),
+                "status": doc.get("status", "Open"),
+                "created_at": doc["created_at"].isoformat() if doc.get("created_at") else "",
+            }
+        )
+    return tickets
+
+
 def get_message_history(session_id: str) -> MongoDBChatMessageHistory:
     """Return the LangChain chat-history object backing a given session."""
     settings = get_settings()
