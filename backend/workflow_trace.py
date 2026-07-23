@@ -24,8 +24,8 @@ from typing import Dict, Tuple
 #   embedding  -> HuggingFaceEmbeddings / MiniLM, used inside the retriever (vectorstore.py)
 #   qdrant     -> QdrantVectorStore similarity search, used inside the retriever (vectorstore.py)
 #   context    -> the retrieved chunks becoming tool-result context fed back to the LLM
-#   sql        -> the save_user_profile tool -> SQLite (database.py)
-#   mongo      -> the submit_support_ticket tool -> MongoDB tickets collection (mongo_service.py)
+#   sql        -> save_user_profile / lookup_customer_by_phone tools -> SQLite (database.py)
+#   mongo      -> submit_support_ticket / lookup_customer_tickets tools -> MongoDB tickets collection (mongo_service.py)
 #   response   -> the final, text-producing Gemini call (agent.py, same LLM as above)
 #   assistant  -> the completed reply streamed back over SSE (app.py)
 PIPELINE_ORDER: Tuple[str, ...] = (
@@ -47,6 +47,8 @@ PIPELINE_ORDER: Tuple[str, ...] = (
 # Which conceptual nodes light up when a given LangChain tool runs.
 TOOL_NODE_GROUPS: Dict[str, Tuple[str, ...]] = {
     "search_we_knowledge_base": ("retriever", "embedding", "qdrant"),
+    "lookup_customer_by_phone": ("sql",),
+    "lookup_customer_tickets": ("mongo",),
     "save_user_profile": ("sql",),
     "submit_support_ticket": ("mongo",),
 }
@@ -64,8 +66,8 @@ STATUS_LABELS: Dict[str, Dict[str, str]] = {
     "qdrant": {"active": "Querying Qdrant...", "done": "Vectors matched"},
     "context": {"active": "Assembling context...", "done": "Context ready"},
     "llm": {"active": "Thinking...", "done": "Reasoning complete"},
-    "sql": {"active": "Running SQL query...", "done": "Profile saved"},
-    "mongo": {"active": "Writing to MongoDB...", "done": "Ticket logged"},
+    "sql": {"active": "Running SQL query...", "done": "SQL query complete"},
+    "mongo": {"active": "Querying MongoDB...", "done": "MongoDB query complete"},
     "response": {"active": "Generating response...", "done": "Response ready"},
     "assistant": {"active": "Delivering reply...", "done": "Completed"},
 }
