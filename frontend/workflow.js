@@ -14,8 +14,8 @@
  *   embedding  -> HuggingFaceEmbeddings / all-MiniLM-L6-v2, used inside the retriever (backend/vectorstore.py)
  *   qdrant     -> QdrantVectorStore similarity search, used inside the retriever (backend/vectorstore.py)
  *   context    -> retrieved chunks becoming tool-result context fed back to the LLM
- *   sql        -> save_user_profile tool -> SQLite             (backend/database.py)
- *   mongo      -> submit_support_ticket tool -> MongoDB tickets collection (backend/mongo_service.py)
+ *   sql        -> save_user_profile / lookup_customer_by_phone tools -> SQLite (backend/database.py)
+ *   mongo      -> lookup_customer_tickets / submit_support_ticket tools -> MongoDB tickets collection (backend/mongo_service.py)
  *   response   -> final, text-producing Gemini call            (backend/agent.py, same LLM instance as "llm")
  *   assistant  -> completed reply streamed back over SSE       (backend/app.py)
  *
@@ -32,8 +32,13 @@
   "use strict";
 
   const VB_W = 1100;
-  const VB_H = 880;
+  const VB_H = 1020;
 
+  // Layout notes: rows are spaced at least 130px apart (the tallest node
+  // footprint, incl. label, is ~110px), and the widest row (5 nodes across
+  // the embedding/qdrant/context band) uses fixed, evenly-spaced columns
+  // instead of visually-nested offsets, so nodes never overlap regardless
+  // of viewport width.
   const NODES = [
     {
       id: "user", x: 550, y: 50, size: "sm", icon: "user.svg",
@@ -42,73 +47,73 @@
       source: "backend/app.py",
     },
     {
-      id: "language", x: 300, y: 170, size: "sm", icon: "language.svg",
+      id: "language", x: 300, y: 175, size: "sm", icon: "language.svg",
       en: "Language Detection", ar: "كشف اللغة",
       descEn: "Classifies the message as Arabic or English.", descAr: "تصنيف الرسالة كعربية أو إنجليزية.",
       source: "backend/language.py — detect_language()",
     },
     {
-      id: "memory", x: 800, y: 170, size: "sm", icon: "memory.svg",
+      id: "memory", x: 800, y: 175, size: "sm", icon: "memory.svg",
       en: "Memory", ar: "الذاكرة",
       descEn: "Loads prior turns from MongoDB chat history.", descAr: "تحميل المحادثات السابقة من MongoDB.",
       source: "backend/mongo_service.py — MongoDBChatMessageHistory",
     },
     {
-      id: "prompt", x: 550, y: 280, size: "sm", icon: "prompt.svg",
+      id: "prompt", x: 550, y: 300, size: "sm", icon: "prompt.svg",
       en: "Prompt Assembly", ar: "تجميع الطلب",
       descEn: "Merges system prompt, language directive, and history.", descAr: "دمج تعليمات النظام وتوجيه اللغة والسجل.",
       source: "backend/agent.py — ChatPromptTemplate",
     },
     {
-      id: "llm", x: 550, y: 400, size: "lg", icon: "gemini.svg",
+      id: "llm", x: 550, y: 430, size: "lg", icon: "gemini.svg",
       en: "Gemini LLM", ar: "نموذج Gemini",
       descEn: "Decides whether to call a tool or answer directly.", descAr: "يقرر استدعاء أداة أو الإجابة مباشرة.",
       source: "backend/agent.py — ChatGoogleGenerativeAI",
     },
     {
-      id: "retriever", x: 190, y: 500, size: "sm", icon: "retriever.svg",
+      id: "retriever", x: 175, y: 560, size: "sm", icon: "retriever.svg",
       en: "Retriever", ar: "الاسترجاع",
       descEn: "search_we_knowledge_base tool call.", descAr: "استدعاء أداة البحث في قاعدة المعرفة.",
       source: "backend/tools.py — search_we_knowledge_base",
     },
     {
-      id: "sql", x: 550, y: 540, size: "sm", icon: "sql.svg",
+      id: "sql", x: 550, y: 560, size: "sm", icon: "sql.svg",
       en: "SQL Tool", ar: "أداة SQL",
-      descEn: "save_user_profile tool call.", descAr: "استدعاء أداة حفظ بيانات العميل.",
+      descEn: "save_user_profile / lookup_customer_by_phone tool calls.", descAr: "استدعاء أدوات حفظ/البحث عن بيانات العميل.",
       source: "backend/tools.py + database.py — SQLite",
     },
     {
-      id: "mongo", x: 910, y: 500, size: "sm", icon: "mongodb.svg",
+      id: "mongo", x: 925, y: 560, size: "sm", icon: "mongodb.svg",
       en: "Mongo Tool", ar: "أداة Mongo",
-      descEn: "submit_support_ticket tool call.", descAr: "استدعاء أداة تسجيل تذكرة الدعم.",
+      descEn: "lookup_customer_tickets / submit_support_ticket tool calls.", descAr: "استدعاء أداة البحث عن التذاكر أو تسجيل تذكرة الدعم.",
       source: "backend/tools.py + mongo_service.py — tickets collection",
     },
     {
-      id: "embedding", x: 90, y: 610, size: "xs", icon: "embedding.svg",
+      id: "embedding", x: 75, y: 690, size: "xs", icon: "embedding.svg",
       en: "MiniLM", ar: "MiniLM",
       descEn: "all-MiniLM-L6-v2 query embedding.", descAr: "تضمين السؤال بنموذج all-MiniLM-L6-v2.",
       source: "backend/vectorstore.py — HuggingFaceEmbeddings",
     },
     {
-      id: "qdrant", x: 290, y: 610, size: "xs", icon: "qdrant.svg",
+      id: "qdrant", x: 275, y: 690, size: "xs", icon: "qdrant.svg",
       en: "Qdrant", ar: "Qdrant",
       descEn: "Vector similarity search.", descAr: "بحث تشابه متجهي.",
       source: "backend/vectorstore.py — QdrantVectorStore",
     },
     {
-      id: "context", x: 190, y: 700, size: "sm", icon: "context.svg",
+      id: "context", x: 175, y: 815, size: "sm", icon: "context.svg",
       en: "RAG Context", ar: "سياق RAG",
       descEn: "Retrieved chunks returned as tool output.", descAr: "المقاطع المسترجعة كمخرجات للأداة.",
       source: "search_we_knowledge_base return value",
     },
     {
-      id: "response", x: 550, y: 780, size: "sm", icon: "response.svg",
+      id: "response", x: 550, y: 815, size: "sm", icon: "response.svg",
       en: "Response Generator", ar: "توليد الرد",
       descEn: "Final Gemini call producing the reply text.", descAr: "استدعاء Gemini الأخير لتوليد نص الرد.",
       source: "backend/agent.py — same Gemini instance, final pass",
     },
     {
-      id: "assistant", x: 550, y: 850, size: "sm", icon: "assistant.svg",
+      id: "assistant", x: 550, y: 960, size: "sm", icon: "assistant.svg",
       en: "Assistant", ar: "المساعد",
       descEn: "Completed reply streamed back over SSE.", descAr: "تسليم الرد الكامل عبر SSE.",
       source: "backend/app.py — /chat SSE stream",
@@ -368,5 +373,9 @@
     }
   }
 
-  window.Workflow = { init, reset, update, setLanguage, nodeById };
+  function detailFor(id) {
+    return nodeDetail[id] || { status: "idle" };
+  }
+
+  window.Workflow = { init, reset, update, setLanguage, nodeById, detailFor };
 })();
