@@ -7,7 +7,7 @@ on pointing this at a real MySQL server instead.
 import logging
 import sqlite3
 from contextlib import contextmanager
-from typing import Iterator
+from typing import Iterator, Optional
 
 from .config import get_settings
 
@@ -33,7 +33,7 @@ def init_db() -> None:
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT,
-                phone TEXT,
+                phone TEXT UNIQUE,
                 age INTEGER,
                 city TEXT
             )
@@ -44,10 +44,33 @@ def init_db() -> None:
 
 
 def insert_user_profile(name: str, phone: str, age: int, city: str) -> None:
-    """Insert an already-validated user profile row."""
+    """Insert or update a user profile row, keyed by phone number.
+
+    `phone` uniquely identifies a customer across visits, so a returning
+    customer's record is updated in place instead of duplicated — this is
+    what lets the agent "remember" a customer (and their tickets) the next
+    time they chat, even from a fresh session/browser visit.
+    """
     with get_connection() as conn:
         conn.execute(
-            "INSERT INTO users (name, phone, age, city) VALUES (?, ?, ?, ?)",
+            """
+            INSERT INTO users (name, phone, age, city) VALUES (?, ?, ?, ?)
+            ON CONFLICT(phone) DO UPDATE SET name=excluded.name, age=excluded.age, city=excluded.city
+            """,
             (name, phone, age, city),
         )
         conn.commit()
+
+
+def get_user_profile_by_phone(phone: str) -> Optional[dict]:
+    """Look up a previously-saved customer profile by phone number, if any.
+
+    Used to recognize a returning customer (e.g. one filing a new ticket)
+    without forcing them to re-enter details already on file.
+    """
+    with get_connection() as conn:
+        conn.row_factory = sqlite3.Row
+        row = conn.execute(
+            "SELECT name, phone, age, city FROM users WHERE phone = ?", (phone,)
+        ).fetchone()
+        return dict(row) if row else None
