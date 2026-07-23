@@ -210,6 +210,10 @@ function applyLanguage(lang) {
   renderSuggestions();
   setStatus(lastKnownStatus);
   Workflow.setLanguage(lang);
+
+  if (!debuggerOpenNodeId && els.debuggerBody) {
+    els.debuggerBody.innerHTML = `<p class="debug-placeholder">${escapeHtml(t("debug_placeholder"))}</p>`;
+  }
 }
 
 function t(key) {
@@ -290,6 +294,7 @@ function closeDebuggerPanel() {
   debuggerOpenNodeId = null;
   els.debuggerPanel.classList.remove("open");
   els.debuggerOverlay.classList.remove("show");
+  els.debuggerBody.innerHTML = `<p class="debug-placeholder">${escapeHtml(t("debug_placeholder"))}</p>`;
 }
 
 function renderDebuggerBody(nodeId, detail, nodeMeta) {
@@ -452,17 +457,23 @@ async function sendMessage(text) {
 
   try {
     await streamChat(text, sessionId, {
-      trace_reset: () => Workflow.reset(),
+      trace_reset: () => {
+        Workflow.reset();
+        // A new turn is starting: any node detail currently shown in the
+        // right-hand debugger panel belongs to the previous turn and is no
+        // longer relevant to what's happening in the graph now, so close it
+        // rather than leaving stale data on screen.
+        closeDebuggerPanel();
+      },
       node_update: (payload) => {
         if (!payload || !payload.node) return;
         Workflow.update(payload.node, payload.status, payload.label, payload.duration_ms, payload.metadata);
         if (debuggerOpenNodeId === payload.node) {
+          // Re-read the full, current detail for this exact node from the
+          // single source of truth instead of the partial SSE payload, so
+          // the panel always reflects only this node's own latest state.
           const nodeMeta = Workflow.nodeById(payload.node);
-          renderDebuggerBody(
-            payload.node,
-            { status: payload.status, label: payload.label, duration_ms: payload.duration_ms, metadata: payload.metadata },
-            nodeMeta
-          );
+          renderDebuggerBody(payload.node, Workflow.detailFor(payload.node), nodeMeta);
         }
       },
       language_info: (info) => {
