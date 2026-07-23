@@ -155,12 +155,15 @@ textarea { font-family: inherit; }
   margin-inline-start: auto;
 }
 
-/* Diagram canvas — 2D system-architecture layout, fixed node coordinates */
+/* Diagram canvas — 2D system-architecture layout, fixed node coordinates.
+   aspect-ratio must match workflow.js's VB_W/VB_H (1100x1020) exactly, or
+   the container squashes/stretches the diagram and nodes drift toward
+   each other again despite correct underlying coordinates. */
 .node-flow {
   position: relative;
   width: 100%;
   max-width: 980px;
-  aspect-ratio: 1100 / 880;
+  aspect-ratio: 1100 / 1020;
   background-color: var(--surface-alt);
   background-image: radial-gradient(circle, rgba(80, 70, 229, 0.10) 1.2px, transparent 1.2px);
   background-size: 24px 24px;
@@ -337,6 +340,14 @@ textarea { font-family: inherit; }
   display: flex;
   flex-direction: column;
   gap: 14px;
+}
+
+.debug-placeholder {
+  margin: auto 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-faint);
+  line-height: 1.5;
 }
 
 .debug-field { display: flex; flex-direction: column; gap: 4px; }
@@ -711,4 +722,6 @@ textarea { font-family: inherit; }
   .workflow-stage { padding: 20px 16px 260px; }
   .workflow-header { flex-direction: column; }
   .language-panel { width: 100%; }
+  .wf-node { width: 84px; }
+  .wf-label { max-width: 80px; font-size: 10px; }
 }
